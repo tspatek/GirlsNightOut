@@ -1,0 +1,14 @@
+.container {
+    height: 100vh;
+}
+
+.row {
+    height: 100%;
+}
+
+.background { 
+    background-image: url("../images/pietable.png");
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center;
+}
