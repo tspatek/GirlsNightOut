@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>nearBy_test</title>
+    <link href="https://fonts.googleapis.com/css?family=Londrina+Solid" rel="stylesheet">
+    <!-- google maps API -->
+    <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?libraries=places&key=AIzaSyA19_uK_d2dMoTo4B6Xpn_QdR8uc-HWZN0"></script>
+
+    <style>
+        #map {
+            height: 500px;
+            width: 600px;
+            margin: auto;
+        }
+
+        body {
+            background-image: url('./images/pietable.png');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #buttonArea {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            flex-wrap: wrap;
+            margin: 10%;
+        }
+
+        .button {
+            background-image: url('./images/piecrust.png');
+            background-size: cover;
+            width: 200px;
+            border-radius: 50%;
+            border: 5px outset silver;
+            padding: 14px;
+            margin: 20px;
+        }
+
+        .button:hover {
+            background-blend-mode: darken;
+            background-color: rgb(192, 192, 192);
+        }
+
+        .button:active {
+            background-image: url('./images/piecrust2.png');
+            border: 5px inset silver;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="buttonArea"></div>
+    <div id="map"></div>
+
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+        crossorigin="anonymous"></script>
+    <script src="https://www.gstatic.com/firebasejs/4.12.0/firebase.js"></script>
+    <script>
+        // Initialize Firebase
+        var config = {
+            apiKey: "AIzaSyAZVk8YI5PR8nfXyoSjvCbBTBB01_RhbTY",
+            authDomain: "meetpie-3c64a.firebaseapp.com",
+            databaseURL: "https://meetpie-3c64a.firebaseio.com",
+            projectId: "meetpie-3c64a",
+            storageBucket: "meetpie-3c64a.appspot.com",
+            messagingSenderId: "941417946944"
+        };
+        firebase.initializeApp(config);
+    </script>
+
+    <script>
+
+        var map;
+        var infowindow;
+        var apiKeyGeo = 'AIzaSyARO_JoPqv8FKwPbWWOk4HyvZaiVebWxPg';
+
+        //all the stuff for getting central location & members' addresses ===========================
+
+
+        var centralLat;
+        var centralLng;
+        var latArray = [];
+        var lngArray = [];
+        function averageCoords() {
+            centralLat = latArray.reduce(getSum) / latArray.length;
+            centralLng = lngArray.reduce(getSum) / lngArray.length;
+        }
+        function geoCode(input, name) {
+            $.ajax({
+                url: 'https://maps.googleapis.com/maps/api/geocode/json?address=' + input + '&key=' + apiKeyGeo,
+                method: 'GET'
+            }).then(function (resp) {
+                var latitude = resp.results[0].geometry.location.lat;
+                var longitude = resp.results[0].geometry.location.lng;
+                var dispName = name;
+                latArray.push(latitude);
+                lngArray.push(longitude);
+                var location = new Location(latitude, longitude, dispName);
+                geoCodeArray.push(location);
+                averageCoords();
+                initMap();
+                db.ref('Events/' + eventId + '/centralLocation').update({
+                    latitude: centralLat,
+                    longitude: centralLng,
+                })
+            })
+        }
+
+        function geoCodeAddress(input, type) {
+            $.ajax({
+                url: 'https://maps.googleapis.com/maps/api/geocode/json?address=' + input + '&key=' + apiKeyGeo,
+                method: 'GET'
+            }).then(function (resp) {
+                var latitude = resp.results[0].geometry.location.lat;
+                var longitude = resp.results[0].geometry.location.lng;
+                var coords = { lat: latitude, lng: longitude };
+                var marker = new google.maps.Marker({
+                    position: coords,
+                    map: map1,
+                    label: {
+                        fontFamily: 'londrina solid',
+                        text: type,
+                        fontSize: '16px',
+                    },
+                });
+            });
+        }
+
+        function getSum(total, num) {
+            return total + num;
+        }
+
+
+        //DUMMMMMMMMY====================REPLACE=================
+        var centralLoc = { lat: 39.63, lng: -104.98 };
+
+        var barRequest = {
+            location: centralLoc,
+            radius: 3219,
+            types: ['bar'],
+            openNow: true,
+        };
+        var cafeRequest = {
+            location: centralLoc,
+            radius: 3219,
+            types: ['cafe'],
+            openNow: true,
+        };
+        var restaurantRequest = {
+            location: centralLoc,
+            radius: 3219,
+            types: ['restaurant'],
+            openNow: true,
+        };
+        var movieRequest = {
+            location: centralLoc,
+            radius: 3219,
+            types: ['movie_theater'],
+            openNow: true,
+        };
+        var clubRequest = {
+            location: centralLoc,
+            radius: 3219,
+            types: ['night_club'],
+            openNow: true,
+        };
+        var parkRequest = {
+            location: centralLoc,
+            radius: 3219,
+            types: ['park'],
+            openNow: true,
+        };
+
+        var map1;
+        function initialize() {
+            map1 = new google.maps.Map(document.getElementById('map'), {
+                mapTypeId: google.maps.MapTypeId.ROADMAP,
+                center: centralLoc,
+                zoom: 13
+            });
+            var pie = {
+                url: './images/pie.png',
+                anchor: new google.maps.Point(25, 25),
+                scaledSize: new google.maps.Size(50, 50, 'px', 'px'),
+            }
+            var marker = new google.maps.Marker({
+                position: centralLoc,
+                map: map1,
+                icon: pie,
+                label: {
+                    fontFamily: 'londrina solid',
+                    text: 'Gooey Center',
+                    fontSize: '20px',
+                    color: 'rebeccapurple',
+                }
+            });
+            infowindow = new google.maps.InfoWindow();
+            var service = new google.maps.places.PlacesService(map1);
+            service.nearbySearch(barRequest, callback);
+            service.nearbySearch(cafeRequest, callback);
+            service.nearbySearch(restaurantRequest, callback);
+            service.nearbySearch(movieRequest, callback);
+            service.nearbySearch(clubRequest, callback);
+            service.nearbySearch(parkRequest, callback);
+
+        }
+        function Option(type, vicinity, name) {
+            this.types = type;
+            this.vicinity = vicinity;
+            this.name = name;
+        }
+
+        var establishments = [];
+
+        function callback(results, status) {
+            if (status == google.maps.places.PlacesServiceStatus.OK) {
+                for (var i = 0; i < results.length; i++) {
+                    var option = new Option(results[i].types, results[i].vicinity, results[i].name);
+                    establishments.push(option);
+                }
+            }
+        }
+
+        function createMarker(place) {
+            var placeLoc = place.geometry.location;
+            var marker = new google.maps.Marker({
+                map: map,
+                position: place.geometry.location
+            });
+            google.maps.event.addListener(marker, 'click', function () {
+                infowindow.setContent("<div><strong>" + place.name + "</strong></div><div>" + place.vicinity + "</div>");
+                infowindow.open(map, this);
+            });
+        }
+        google.maps.event.addDomListener(window, 'load', initialize)
+
+        var cafeButton = $("<img>").attr('src', './images/coffee.png').attr('class', 'button').attr('id', 'cafe');
+        var barButton = $("<img>").attr('src', './images/bar.png').attr('class', 'button').attr('id', 'bar');
+        var parkButton = $("<img>").attr('src', './images/park.png').attr('class', 'button').attr('id', 'park');
+        var restaurantButton = $("<img>").attr('src', './images/restaurant.png').attr('class', 'button').attr('id', 'restaurant');
+        var clubButton = $("<img>").attr('src', './images/club.png').attr('class', 'button').attr('id', 'club');
+        var movieButton = $("<img>").attr('src', './images/movie.png').attr('class', 'button').attr('id', 'movie');
+
+        var types = ['cafe', 'bar', 'park', 'restaurant', 'club', 'movie'];
+
+        setTimeout(popButtons, 1000);
+        function popButtons() {
+            for (var i = 0; i < establishments.length; i++) {
+                for (var j = 0; j < types.length; j++) {
+                    for (var k = 0; k < establishments[i].types.length; k++) {
+                        if (establishments[i].types[k].includes(types[j])) {
+                            var butType = window[types[j] + 'Button'];
+                            $("#buttonArea").append(butType);
+                        } else {
+                        }
+                    }
+                }
+            }
+        }
+
+        function initMap() {
+            var centralLoc = { lat: centralLat, lng: centralLng };
+            var map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 10,
+                center: centralLoc,
+                label: "Center",
+            });
+            var pie = {
+                url: './images/pie.png',
+                anchor: new google.maps.Point(25, 25),
+                scaledSize: new google.maps.Size(50, 50, 'px', 'px'),
+            }
+            var marker = new google.maps.Marker({
+                position: centralLoc,
+                map: map,
+                icon: pie,
+                label: {
+                    fontFamily: 'londrina solid',
+                    text: 'Gooey \t \t Center',
+                    fontSize: '20px',
+                    color: 'rebeccapurple',
+                }
+            });
+
+            for (var i = 0; i < geoCodeArray.length; i++) {
+                var marker = new google.maps.Marker({
+                    position: { lat: geoCodeArray[i].latitude, lng: geoCodeArray[i].longitude },
+                    map: map,
+                    label: {
+                        fontFamily: 'londrina solid',
+                        text: geoCodeArray[i].displayName,
+                        fontSize: '16px',
+                    },
+                });
+            }
+        }
+
+        $(window).on('load', function () {
+            $('#map').hide();
+        });
+        $(document).on('click', '.button', function () {
+            $('#map').show();
+            document.querySelector('#map').scrollIntoView({
+                behavior: 'smooth'
+            })
+
+        });
+
+        function addressToCoords(type) {
+            for (var i = 0; i < establishments.length; i++) {
+                for (var k = 0; k < establishments[i].types.length; k++) {
+                    if (establishments[i].types[k].includes(type)) {
+                        geoCodeAddress(establishments[i].vicinity, establishments[i].name);
+                    }
+                }
+            }
+        }
+        /// This could be a little DRYer ============================
+        $(document).on('click', '#bar', function () {
+            console.log('bar clicked');
+            initialize();
+            addressToCoords('bar');
+        })
+        $(document).on('click', '#restaurant', function () {
+            console.log('restaurant clicked');
+            initialize();
+            addressToCoords('restaurant');
+        })
+        $(document).on('click', '#club', function () {
+            console.log('club clicked');
+            initialize();
+            addressToCoords('club');
+        })
+        $(document).on('click', '#park', function () {
+            console.log('park clicked');
+            initialize();
+            addressToCoords('park');
+        })
+        $(document).on('click', '#cafe', function () {
+            console.log('cafe clicked');
+            initialize();
+            addressToCoords('cafe');
+        })
+        $(document).on('click', '#movie', function () {
+            console.log('movie clicked');
+            initialize();
+            addressToCoords('movie');
+        })
+    </script>
+
+</body>
+
+</html>
